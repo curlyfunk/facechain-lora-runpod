@@ -1,22 +1,33 @@
-FROM nvidia/cuda:12.1.1-cudnn8-runtime-ubuntu20.04
+FROM nvidia/cuda:12.4.1-cudnn-devel-ubuntu22.04
 
-ENV DEBIAN_FRONTEND=noninteractive
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=on \
+    SHELL=/bin/bash
+
+SHELL ["/bin/bash", "-o", "pipefail", "-c"]
+
+# Системни зависимости
+RUN apt update && \
+    apt upgrade -y && \
+    apt install -y \
+      python3-pip \
+      git \
+      wget \
+      curl \
+      ffmpeg \
+      libgl1-mesa-glx \
+      libglib2.0-0 && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /workspace
 
-# Основни пакети
-RUN apt update && apt install -y git python3-pip ffmpeg libgl1 unzip
-
-# Python зависимости
+# Python зависимости – добавяме само базови, ще надграждаме при нужда
 RUN pip install --upgrade pip && \
-    pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121 && \
-    pip install transformers datasets accelerate peft bitsandbytes safetensors runpod diffusers xformers scipy tqdm
+    pip install runpod
 
-# Clone FaceChain (LoRA training)
-RUN git clone https://github.com/modelscope/facechain.git
-WORKDIR /workspace/facechain
-
-# Копира handler + старт скрипт
-COPY --chmod=755 handler.py /workspace/facechain/handler.py
+# Копиране на скриптове
+COPY --chmod=755 handler.py /workspace/handler.py
 COPY --chmod=755 start.sh /start.sh
 
 ENTRYPOINT ["/start.sh"]
